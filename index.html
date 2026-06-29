@@ -1,9 +1,15 @@
 <script>
+document.addEventListener("DOMContentLoaded", () => {
     // Das "?" abschneiden und den Modell-url aus der Adresszeile auslesen
     const modelUrl = window.location.search.substring(1);
 
     // Das Model-Viewer Element über die ID holen
     const viewer = document.getElementById('ar-viewer');
+
+    if (!viewer) {
+        console.error("Fehler: Das Element mit der ID 'ar-viewer' wurde nicht im HTML gefunden!");
+        return;
+    }
 
     // Prüfen, ob eine valide Modell-url übergeben wurde
     if (modelUrl && modelUrl.trim() !== "") {
@@ -44,9 +50,13 @@
     }
 
     // QR-Code generieren
-    new QRCode(document.getElementById("qrcode"), {
-        text: window.location.href, // holt die aktuelle URL
-        width: 200,
-        height: 200,
-    });
+    const qrcodeContainer = document.getElementById("qrcode");
+    if (qrcodeContainer) {
+        new QRCode(qrcodeContainer, {
+            text: window.location.href, // holt die aktuelle URL
+            width: 200,
+            height: 200,
+        });
+    }
+});
 </script>
