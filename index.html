@@ -1,62 +1,102 @@
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-    // Das "?" abschneiden und den Modell-url aus der Adresszeile auslesen
-    const modelUrl = window.location.search.substring(1);
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Viewer Test</title>
+    
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.2.0/model-viewer.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-    // Das Model-Viewer Element über die ID holen
-    const viewer = document.getElementById('ar-viewer');
+    <style>
+        model-viewer::part(default-ar-button) {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%) scale(6);
+            transform-origin: center;
+        }
+        .error-message {
+            color: red;
+            font-family: sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            font-size: 20px;
+        }
+    </style>
+</head>
+<body>
 
-    if (!viewer) {
-        console.error("Fehler: Das Element mit der ID 'ar-viewer' wurde nicht im HTML gefunden!");
-        return;
-    }
+    <div id="qrcode" style="position: absolute; top: 15px; right: 15px; z-index: 10;"></div>
 
-    // Prüfen, ob eine valide Modell-url übergeben wurde
-    if (modelUrl && modelUrl.trim() !== "") {
-        
-        // PRÜFUNG: Wenn es eine Localtunnel-URL ist, aktivieren wir den Bypass-Schutz
-        if (modelUrl.includes("loca.lt")) {
-            fetch(modelUrl, {
-                headers: {
-                    "bypass-tunnel-reminder": "true"
-                }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error("Netzwerkfehler beim Laden des Modells");
-                return response.blob(); // Die .glb Datei als Binärdaten (Blob) holen
-            })
-            .then(blob => {
-                // Erstellt eine temporäre, sichere Browser-interne URL für das geladene Modell
-                const blobUrl = URL.createObjectURL(blob);
-                viewer.setAttribute('src', blobUrl);
-            })
-            .catch(error => {
-                console.error("Localtunnel-Bypass Fehler:", error);
-                // Fallback: Falls fetch fehlschlägt, versuchen wir es trotzdem direkt
-                viewer.setAttribute('src', modelUrl);
-            });
-        } else {
-            // Für normale URLs (z.B. später im echten Uni-System) direkt laden
-            viewer.setAttribute('src', modelUrl);
+    <model-viewer
+        id="ar-viewer"
+        alt="Mein 3D Modell"
+        ar
+        ar-modes="webxr scene-viewer quick-look"
+        camera-controls
+        touch-action="pan-y"
+        style="width: 100vw; height: 80vh; margin: 0; display: block;">
+    </model-viewer>
+
+    <script>
+    document.addEventListener("DOMContentLoaded", () => {
+        // Das "?" abschneiden und den Modell-url aus der Adresszeile auslesen
+        const modelUrl = window.location.search.substring(1);
+
+        // Das Model-Viewer Element über die ID holen
+        const viewer = document.getElementById('ar-viewer');
+
+        if (!viewer) {
+            console.error("Fehler: Das Element mit der ID 'ar-viewer' wurde nicht im HTML gefunden!");
+            return;
         }
 
-    } else {
-        // Fehlermeldung, falls keine URL angegeben wurde
-        viewer.style.display = "none";
-        const errorDiv = document.createElement('div');
-        errorDiv.className = "error-message";
-        errorDiv.innerText = "Fehler: Kein 3D-Modell in der URL angegeben!";
-        document.body.appendChild(errorDiv);
-    }
+        // Prüfen, ob eine valide Modell-url übergeben wurde
+        if (modelUrl && modelUrl.trim() !== "") {
+            
+            // PRÜFUNG: Wenn es eine Localtunnel-URL ist, aktivieren wir den Bypass-Schutz
+            if (modelUrl.includes("loca.lt")) {
+                fetch(modelUrl, {
+                    headers: {
+                        "bypass-tunnel-reminder": "true"
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) throw new Error("Netzwerkfehler beim Laden des Modells");
+                    return response.blob();
+                })
+                .then(blob => {
+                    const blobUrl = URL.createObjectURL(blob);
+                    viewer.setAttribute('src', blobUrl);
+                })
+                .catch(error => {
+                    console.error("Localtunnel-Bypass Fehler:", error);
+                    viewer.setAttribute('src', modelUrl);
+                });
+            } else {
+                viewer.setAttribute('src', modelUrl);
+            }
 
-    // QR-Code generieren
-    const qrcodeContainer = document.getElementById("qrcode");
-    if (qrcodeContainer) {
-        new QRCode(qrcodeContainer, {
-            text: window.location.href, // holt die aktuelle URL
-            width: 200,
-            height: 200,
-        });
-    }
-});
-</script>
+        } else {
+            // Fehlermeldung, falls keine URL angegeben wurde
+            viewer.style.display = "none";
+            const errorDiv = document.createElement('div');
+            errorDiv.className = "error-message";
+            errorDiv.innerText = "Fehler: Kein 3D-Modell in der URL angegeben!";
+            document.body.appendChild(errorDiv);
+        }
+
+        // QR-Code generieren
+        const qrcodeContainer = document.getElementById("qrcode");
+        if (qrcodeContainer) {
+            new QRCode(qrcodeContainer, {
+                text: window.location.href,
+                width: 200,
+                height: 200,
+            });
+        }
+    });
+    </script>
+</body>
+</html>
