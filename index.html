@@ -47,44 +47,46 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!viewer) return;
 
     if (modelUrl && modelUrl.trim() !== "") {
-        
+        const cleanUrl = modelUrl.split('?')[0];
+        const baseUrl = new URL(cleanUrl).origin;
+
+        // Wenn die Seite normal geladen wird, prüfen wir die Verbindung
         if (modelUrl.includes("loca.lt")) {
-            const cleanUrl = modelUrl.split('?')[0];
-            const baseUrl = new URL(cleanUrl).origin;
-
-            // TRICK: Wir prüfen, ob wir gerade frisch von dem Localtunnel-Bypass kommen
-            if (!window.location.hash.includes("bypassed")) {
-                // Wenn nicht, schicken wir den User DIREKT auf das Localtunnel-Hauptverzeichnis.
-                // Er landet dort auf der Infoseite, klickt einmal (oder es schaltet direkt frei)
-                // Wir hängen als "Referrer" oder Ziel unsere jetzige Seite wieder hinten dran.
+            
+            // Wenn der User aus dem Freischalt-Prozess kommt (erkenntbar am localStorage-Marker)
+            if (localStorage.getItem("lt_bypassed") === "true") {
+                // Marker direkt löschen für den nächsten Scan
+                localStorage.removeItem("lt_bypassed");
                 
-                console.log("Zwinge Localtunnel-Handshake...");
-                
-                // Wir speichern, wo wir hinwollten, und leiten das gesamte Handy auf Localtunnel um
-                const returnUrl = window.location.href + "#bypassed";
-                
-                // Da der direkte Klick nötig ist, zeigen wir dem User ein super schnelles, 
-                // sauberes Overlay, falls Localtunnel hakt:
+                // Modell direkt laden, da der Tunnel jetzt offen ist!
+                viewer.setAttribute('crossorigin', 'anonymous');
+                viewer.setAttribute('src', cleanUrl);
+            } else {
+                // Erster Aufruf: Wir zeigen den Freischalt-Button
                 viewer.style.display = "none";
-                const loadingDiv = document.createElement('div');
-                loadingDiv.className = "error-message";
-                loadingDiv.style.color = "#333";
-                loadingDiv.innerHTML = "Verbindung zum 3D-Server wird hergestellt...<br><br>" +
-                    "<a href='" + baseUrl + "' style='padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>Hier tippen zum Freischalten</a>";
-                document.body.appendChild(loadingDiv);
-                
-                // Versuche die automatische Weiterleitung zum Freischalten
-                setTimeout(() => {
-                    window.location.href = baseUrl;
-                }, 1000);
-                
-                return;
+                const authDiv = document.createElement('div');
+                authDiv.className = "error-message";
+                authDiv.style.color = "#333";
+                authDiv.innerHTML = "Verbindung zum Workshop-Server wird hergestellt...<br><br>" +
+                    "<button id='bypassBtn' style='padding: 15px 30px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer;'>Hier tippen zum Freischalten</button>";
+                document.body.appendChild(authDiv);
+
+                document.getElementById('bypassBtn').addEventListener('click', () => {
+                    // Wir merken uns im Browser, dass wir gleich bereit sind
+                    localStorage.setItem("lt_bypassed", "true");
+                    
+                    // Öffnet die Localtunnel-Seite (dein Bild 2) in einem neuen Tab/Fenster
+                    const win = window.open(baseUrl, '_blank');
+                    
+                    // Zeigt dem User eine Info, dass er gleich zurückkehren kann
+                    authDiv.innerHTML = "Bitte im geöffneten Fenster kurz bestätigen,<br>dann diese Seite aktualisieren!";
+                    
+                    // Nach 4 Sekunden laden wir diese Seite automatisch neu, damit das Modell erscheint
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 4000);
+                });
             }
-
-            // Wenn wir hier landen, hat das Handy die loca.lt-Domain physisch besucht und das Cookie!
-            viewer.setAttribute('crossorigin', 'anonymous');
-            viewer.setAttribute('src', cleanUrl);
-
         } else {
             viewer.setAttribute('src', modelUrl);
         }
@@ -100,7 +102,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const qrcodeContainer = document.getElementById("qrcode");
     if (qrcodeContainer) {
         new QRCode(qrcodeContainer, {
-            text: window.location.href.split('#')[0], // QR-Code bleibt sauber ohne Hash
+            text: window.location.href.split('#')[0],
             width: 200,
             height: 200,
         });
