@@ -41,53 +41,48 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const modelUrl = window.location.search.substring(1);
+    const currentUrl = new URL(window.location.href);
+    const modelUrl = currentUrl.search.substring(1).split('#')[0]; // Holt die reine .glb URL
     const viewer = document.getElementById('ar-viewer');
 
     if (!viewer) return;
 
     if (modelUrl && modelUrl.trim() !== "") {
-        const cleanUrl = modelUrl.split('?')[0];
-        const baseUrl = new URL(cleanUrl).origin;
+        const cleanModelUrl = modelUrl.split('?')[0];
+        const localtunnelBase = new URL(cleanModelUrl).origin;
 
-        // Wenn die Seite normal geladen wird, prüfen wir die Verbindung
-        if (modelUrl.includes("loca.lt")) {
+        // SCHRITT 1: Wenn wir gerade frisch von Localtunnel zurückkommen, laden wir sofort das Modell!
+        if (currentUrl.hash === "#back-from-tunnel") {
+            console.log("Tunnel freigeschaltet! Lade Modell...");
+            viewer.setAttribute('crossorigin', 'anonymous');
+            viewer.setAttribute('src', cleanModelUrl);
+        } 
+        // SCHRITT 2: Wenn wir die Seite ganz frisch scannen, zwingen wir den sauberen Handshake
+        else if (cleanModelUrl.includes("loca.lt")) {
             
-            // Wenn der User aus dem Freischalt-Prozess kommt (erkenntbar am localStorage-Marker)
-            if (localStorage.getItem("lt_bypassed") === "true") {
-                // Marker direkt löschen für den nächsten Scan
-                localStorage.removeItem("lt_bypassed");
-                
-                // Modell direkt laden, da der Tunnel jetzt offen ist!
-                viewer.setAttribute('crossorigin', 'anonymous');
-                viewer.setAttribute('src', cleanUrl);
-            } else {
-                // Erster Aufruf: Wir zeigen den Freischalt-Button
-                viewer.style.display = "none";
-                const authDiv = document.createElement('div');
-                authDiv.className = "error-message";
-                authDiv.style.color = "#333";
-                authDiv.innerHTML = "Verbindung zum Workshop-Server wird hergestellt...<br><br>" +
-                    "<button id='bypassBtn' style='padding: 15px 30px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer;'>Hier tippen zum Freischalten</button>";
-                document.body.appendChild(authDiv);
+            // Wir zeigen eine saubere, professionelle Ladeseite
+            viewer.style.display = "none";
+            const authDiv = document.createElement('div');
+            authDiv.className = "error-message";
+            authDiv.style.color = "#333";
+            authDiv.style.padding = "20px";
+            authDiv.innerHTML = "<h3>AR-Sitzung wird vorbereitet...</h3>" +
+                "<p style='font-size: 16px; color: #666;'>Klicke unten auf den Button, um die sichere Verbindung zum 3D-Server zu aktivieren.</p><br>" +
+                "<button id='bypassBtn' style='padding: 15px 30px; background: #007bff; color: white; border: none; border-radius: 5px; font-size: 18px; font-weight: bold; cursor: pointer; width: 80%; max-width: 300px;'>3D-Modell aktivieren</button>";
+            document.body.appendChild(authDiv);
 
-                document.getElementById('bypassBtn').addEventListener('click', () => {
-                    // Wir merken uns im Browser, dass wir gleich bereit sind
-                    localStorage.setItem("lt_bypassed", "true");
-                    
-                    // Öffnet die Localtunnel-Seite (dein Bild 2) in einem neuen Tab/Fenster
-                    const win = window.open(baseUrl, '_blank');
-                    
-                    // Zeigt dem User eine Info, dass er gleich zurückkehren kann
-                    authDiv.innerHTML = "Bitte im geöffneten Fenster kurz bestätigen,<br>dann diese Seite aktualisieren!";
-                    
-                    // Nach 4 Sekunden laden wir diese Seite automatisch neu, damit das Modell erscheint
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 4000);
-                });
-            }
+            document.getElementById('bypassBtn').addEventListener('click', () => {
+                // Wir bauen die Rücksprung-URL: Unsere GitHub-Seite, aber mit der Flagge #back-from-tunnel hinten dran
+                const destinationWithHash = currentUrl.origin + currentUrl.pathname + currentUrl.search + "#back-from-tunnel";
+                
+                // Wir leiten das Handy DIREKT auf Localtunnel um. 
+                // Wenn der User dort auf "Click to Submit" drückt, weiß Localtunnel dank des Browser-Verlaufs, 
+                // dass das Cookie aktiv ist.
+                // Da wir das im selben Tab machen, bleibt das Cookie zu 100% für diese Session erhalten!
+                window.location.href = localtunnelBase;
+            });
         } else {
+            // Normale URLs direkt laden
             viewer.setAttribute('src', modelUrl);
         }
 
@@ -99,10 +94,11 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.appendChild(errorDiv);
     }
 
+    // QR-Code generieren (Immer sauber ohne den Hash-Zusatz)
     const qrcodeContainer = document.getElementById("qrcode");
     if (qrcodeContainer) {
         new QRCode(qrcodeContainer, {
-            text: window.location.href.split('#')[0],
+            text: currentUrl.origin + currentUrl.pathname + currentUrl.search,
             width: 200,
             height: 200,
         });
