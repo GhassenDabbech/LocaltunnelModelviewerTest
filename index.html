@@ -49,24 +49,22 @@ document.addEventListener("DOMContentLoaded", () => {
     if (modelUrl && modelUrl.trim() !== "") {
         
         if (modelUrl.includes("loca.lt")) {
-            // Wir versuchen den direkten anonymen Fetch mit erzwungenem Cache-Bypass
-            // und hängen den von Localtunnel erlaubten Standard-Header an, 
-            // erzwingen aber das Ignorieren des Preflight-Verhaltens
-            
-            const headers = new Headers();
-            headers.append("bypass-tunnel-reminder", "true");
+            // Wir bereinigen die URL von eventuellen Doppelungen
+            const cleanUrl = modelUrl.split('?')[0];
 
-            fetch(modelUrl, {
+            // Ein 'Simple Request': Wir nutzen NUR Standard-Header.
+            // Indem wir sagen, wir akzeptieren nur Binärdaten/JSON (kein HTML),
+            // zwingen wir Localtunnel, die HTML-Warnseite zu überspringen, 
+            // OHNE dass der Browser einen CORS-Preflight (OPTIONS) schickt!
+            fetch(cleanUrl, {
                 method: "GET",
-                headers: headers,
                 mode: "cors",
-                credentials: "omit" // Verhindert, dass Cookies den Request als "komplex" markieren
+                headers: {
+                    "Accept": "application/octet-stream, application/json, */*"
+                }
             })
             .then(response => {
-                if (!response.ok) {
-                    // Falls es immer noch 511 wirft, versuchen wir es über die URL-Manipulation
-                    throw new Error("Normaler Fetch blockiert, wechsle zu URL-Bypass...");
-                }
+                if (!response.ok) throw new Error("Status: " + response.status);
                 return response.blob();
             })
             .then(blob => {
@@ -74,13 +72,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 viewer.setAttribute('src', objectURL);
             })
             .catch(error => {
-                console.warn(error);
-                // Letzter Versuch: Wir hängen den Parameter an und hoffen, 
-                // dass der model-viewer es frisst, wenn wir das crossorigin-Attribut komplett löschen
-                viewer.removeAttribute('crossorigin');
-                
-                const separator = modelUrl.includes('?') ? '&' : '?';
-                viewer.setAttribute('src', modelUrl + separator + "bypass-tunnel-reminder=true");
+                console.error("Bypass fehlgeschlagen, versuche Direktladung:", error);
+                viewer.setAttribute('src', cleanUrl);
             });
         } else {
             viewer.setAttribute('src', modelUrl);
