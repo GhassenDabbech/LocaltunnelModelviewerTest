@@ -39,7 +39,7 @@
         style="width: 100vw; height: 80vh; margin: 0; display: block;">
     </model-viewer>
 
-  <script>
+ <script>
 document.addEventListener("DOMContentLoaded", () => {
     const modelUrl = window.location.search.substring(1);
     const viewer = document.getElementById('ar-viewer');
@@ -49,33 +49,40 @@ document.addEventListener("DOMContentLoaded", () => {
     if (modelUrl && modelUrl.trim() !== "") {
         
         if (modelUrl.includes("loca.lt")) {
-            // OPTION 2: Der unsichtbare Login im Hintergrund
-            // Wir senden eine POST-Anfrage an die Localtunnel-Basisdomain,
-            // um die IP-Sperre für diese Browser-Session sofort aufzuheben.
+            // Wir versuchen den direkten anonymen Fetch mit erzwungenem Cache-Bypass
+            // und hängen den von Localtunnel erlaubten Standard-Header an, 
+            // erzwingen aber das Ignorieren des Preflight-Verhaltens
             
-            const urlObj = new URL(modelUrl);
-            const baseUrl = urlObj.origin; // Holt z.B. https://nice-worlds-kiss.loca.lt
+            const headers = new Headers();
+            headers.append("bypass-tunnel-reminder", "true");
 
-            fetch(baseUrl, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/x-www-form-urlencoded",
-                    "bypass-tunnel-reminder": "true" // Sagt Localtunnel: Lass mich durch!
-                },
-                mode: "no-cors" // Verhindert die CORS-Blockade beim Login-Fetch
+            fetch(modelUrl, {
+                method: "GET",
+                headers: headers,
+                mode: "cors",
+                credentials: "omit" // Verhindert, dass Cookies den Request als "komplex" markieren
             })
-            .then(() => {
-                // Sobald die Anfrage raus ist, ist das Tor offen.
-                // Jetzt laden wir das Modell ganz normal.
-                viewer.setAttribute('src', modelUrl);
+            .then(response => {
+                if (!response.ok) {
+                    // Falls es immer noch 511 wirft, versuchen wir es über die URL-Manipulation
+                    throw new Error("Normaler Fetch blockiert, wechsle zu URL-Bypass...");
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const objectURL = URL.createObjectURL(blob);
+                viewer.setAttribute('src', objectURL);
             })
             .catch(error => {
-                console.error("Automatischer Bypass fehlgeschlagen:", error);
-                viewer.setAttribute('src', modelUrl);
+                console.warn(error);
+                // Letzter Versuch: Wir hängen den Parameter an und hoffen, 
+                // dass der model-viewer es frisst, wenn wir das crossorigin-Attribut komplett löschen
+                viewer.removeAttribute('crossorigin');
+                
+                const separator = modelUrl.includes('?') ? '&' : '?';
+                viewer.setAttribute('src', modelUrl + separator + "bypass-tunnel-reminder=true");
             });
-
         } else {
-            // Für normale URLs direkt laden
             viewer.setAttribute('src', modelUrl);
         }
 
@@ -87,7 +94,6 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.appendChild(errorDiv);
     }
 
-    // QR-Code generieren
     const qrcodeContainer = document.getElementById("qrcode");
     if (qrcodeContainer) {
         new QRCode(qrcodeContainer, {
