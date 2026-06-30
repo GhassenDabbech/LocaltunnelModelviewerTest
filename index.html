@@ -42,7 +42,7 @@
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const currentUrl = new URL(window.location.href);
-    const modelUrl = currentUrl.search.substring(1).split('#')[0]; // Holt die reine .glb URL
+    const modelUrl = currentUrl.search.substring(1).split('#')[0]; // Holt die reine .glb URL ohne Hash
     const viewer = document.getElementById('ar-viewer');
 
     if (!viewer) return;
@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // SCHRITT 2: Wenn wir die Seite ganz frisch scannen, zwingen wir den sauberen Handshake
         else if (cleanModelUrl.includes("loca.lt")) {
             
-            // Wir zeigen eine saubere, professionelle Ladeseite
+            // Wir zeigen eine saubere Ladeseite statt des leeren Viewers
             viewer.style.display = "none";
             const authDiv = document.createElement('div');
             authDiv.className = "error-message";
@@ -72,17 +72,14 @@ document.addEventListener("DOMContentLoaded", () => {
             document.body.appendChild(authDiv);
 
             document.getElementById('bypassBtn').addEventListener('click', () => {
-                // Wir bauen die Rücksprung-URL: Unsere GitHub-Seite, aber mit der Flagge #back-from-tunnel hinten dran
+                // Wir bauen die Rücksprung-URL: Unsere GitHub-Seite, aber mit dem Marker #back-from-tunnel
                 const destinationWithHash = currentUrl.origin + currentUrl.pathname + currentUrl.search + "#back-from-tunnel";
                 
-                // Wir leiten das Handy DIREKT auf Localtunnel um. 
-                // Wenn der User dort auf "Click to Submit" drückt, weiß Localtunnel dank des Browser-Verlaufs, 
-                // dass das Cookie aktiv ist.
-                // Da wir das im selben Tab machen, bleibt das Cookie zu 100% für diese Session erhalten!
+                // Wir leiten das Handy DIREKT im selben Tab auf Localtunnel um
                 window.location.href = localtunnelBase;
             });
         } else {
-            // Normale URLs direkt laden
+            // Für normale URLs direkt laden
             viewer.setAttribute('src', modelUrl);
         }
 
