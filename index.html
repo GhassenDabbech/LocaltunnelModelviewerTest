@@ -48,13 +48,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (modelUrl && modelUrl.trim() !== "") {
         
-        // Wenn es Localtunnel ist, zwingen wir model-viewer zu anonymem CORS ohne Preflight-Header
         if (modelUrl.includes("loca.lt")) {
-            viewer.setAttribute('crossorigin', 'anonymous');
+            // OPTION 2: Der unsichtbare Login im Hintergrund
+            // Wir senden eine POST-Anfrage an die Localtunnel-Basisdomain,
+            // um die IP-Sperre für diese Browser-Session sofort aufzuheben.
+            
+            const urlObj = new URL(modelUrl);
+            const baseUrl = urlObj.origin; // Holt z.B. https://nice-worlds-kiss.loca.lt
+
+            fetch(baseUrl, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "bypass-tunnel-reminder": "true" // Sagt Localtunnel: Lass mich durch!
+                },
+                mode: "no-cors" // Verhindert die CORS-Blockade beim Login-Fetch
+            })
+            .then(() => {
+                // Sobald die Anfrage raus ist, ist das Tor offen.
+                // Jetzt laden wir das Modell ganz normal.
+                viewer.setAttribute('src', modelUrl);
+            })
+            .catch(error => {
+                console.error("Automatischer Bypass fehlgeschlagen:", error);
+                viewer.setAttribute('src', modelUrl);
+            });
+
+        } else {
+            // Für normale URLs direkt laden
+            viewer.setAttribute('src', modelUrl);
         }
-        
-        // Direktes Setzen der URL – model-viewer übernimmt das Laden
-        viewer.setAttribute('src', modelUrl);
 
     } else {
         viewer.style.display = "none";
@@ -64,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
         document.body.appendChild(errorDiv);
     }
 
+    // QR-Code generieren
     const qrcodeContainer = document.getElementById("qrcode");
     if (qrcodeContainer) {
         new QRCode(qrcodeContainer, {
