@@ -39,7 +39,7 @@
         style="width: 100vw; height: 80vh; margin: 0; display: block;">
     </model-viewer>
 
- <script>
+<script>
 document.addEventListener("DOMContentLoaded", () => {
     const modelUrl = window.location.search.substring(1);
     const viewer = document.getElementById('ar-viewer');
@@ -49,32 +49,42 @@ document.addEventListener("DOMContentLoaded", () => {
     if (modelUrl && modelUrl.trim() !== "") {
         
         if (modelUrl.includes("loca.lt")) {
-            // Wir bereinigen die URL von eventuellen Doppelungen
             const cleanUrl = modelUrl.split('?')[0];
+            const baseUrl = new URL(cleanUrl).origin;
 
-            // Ein 'Simple Request': Wir nutzen NUR Standard-Header.
-            // Indem wir sagen, wir akzeptieren nur Binärdaten/JSON (kein HTML),
-            // zwingen wir Localtunnel, die HTML-Warnseite zu überspringen, 
-            // OHNE dass der Browser einen CORS-Preflight (OPTIONS) schickt!
-            fetch(cleanUrl, {
-                method: "GET",
-                mode: "cors",
-                headers: {
-                    "Accept": "application/octet-stream, application/json, */*"
-                }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error("Status: " + response.status);
-                return response.blob();
-            })
-            .then(blob => {
-                const objectURL = URL.createObjectURL(blob);
-                viewer.setAttribute('src', objectURL);
-            })
-            .catch(error => {
-                console.error("Bypass fehlgeschlagen, versuche Direktladung:", error);
-                viewer.setAttribute('src', cleanUrl);
-            });
+            // TRICK: Wir prüfen, ob wir gerade frisch von dem Localtunnel-Bypass kommen
+            if (!window.location.hash.includes("bypassed")) {
+                // Wenn nicht, schicken wir den User DIREKT auf das Localtunnel-Hauptverzeichnis.
+                // Er landet dort auf der Infoseite, klickt einmal (oder es schaltet direkt frei)
+                // Wir hängen als "Referrer" oder Ziel unsere jetzige Seite wieder hinten dran.
+                
+                console.log("Zwinge Localtunnel-Handshake...");
+                
+                // Wir speichern, wo wir hinwollten, und leiten das gesamte Handy auf Localtunnel um
+                const returnUrl = window.location.href + "#bypassed";
+                
+                // Da der direkte Klick nötig ist, zeigen wir dem User ein super schnelles, 
+                // sauberes Overlay, falls Localtunnel hakt:
+                viewer.style.display = "none";
+                const loadingDiv = document.createElement('div');
+                loadingDiv.className = "error-message";
+                loadingDiv.style.color = "#333";
+                loadingDiv.innerHTML = "Verbindung zum 3D-Server wird hergestellt...<br><br>" +
+                    "<a href='" + baseUrl + "' style='padding: 10px 20px; background: #007bff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;'>Hier tippen zum Freischalten</a>";
+                document.body.appendChild(loadingDiv);
+                
+                // Versuche die automatische Weiterleitung zum Freischalten
+                setTimeout(() => {
+                    window.location.href = baseUrl;
+                }, 1000);
+                
+                return;
+            }
+
+            // Wenn wir hier landen, hat das Handy die loca.lt-Domain physisch besucht und das Cookie!
+            viewer.setAttribute('crossorigin', 'anonymous');
+            viewer.setAttribute('src', cleanUrl);
+
         } else {
             viewer.setAttribute('src', modelUrl);
         }
@@ -90,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const qrcodeContainer = document.getElementById("qrcode");
     if (qrcodeContainer) {
         new QRCode(qrcodeContainer, {
-            text: window.location.href,
+            text: window.location.href.split('#')[0], // QR-Code bleibt sauber ohne Hash
             width: 200,
             height: 200,
         });
